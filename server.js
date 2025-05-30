@@ -1,22 +1,26 @@
-// server.js
-
 const WebSocket = require('ws');
-const PORT = 8080;
 
-// إنشاء WebSocket Server
-const wss = new WebSocket.Server({ port: PORT });
+// استخدم البورت اللي بتديه Railway أو منصة الاستضافة، أو 8080 لو محلياً
+const PORT = process.env.PORT || 8080;
 
-console.log(`WebSocket Server is running on ws://localhost:${PORT}`);
+const wss = new WebSocket.Server({ noServer: true });
 
-// لما Client يتصل
+const http = require('http');
+
+const server = http.createServer();
+
+server.on('upgrade', (request, socket, head) => {
+  wss.handleUpgrade(request, socket, head, (ws) => {
+    wss.emit('connection', ws, request);
+  });
+});
+
 wss.on('connection', (ws) => {
   console.log('🔗 New client connected');
 
-  // استقبال رسالة من الـ client
   ws.on('message', (message) => {
     console.log(`📩 Received: ${message}`);
 
-    // إرسال الرسالة لكل العملاء المتصلين
     wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
         client.send(message);
@@ -24,13 +28,15 @@ wss.on('connection', (ws) => {
     });
   });
 
-  // لما الاتصال يتقفل
   ws.on('close', () => {
     console.log('❌ Client disconnected');
   });
 
-  // التعامل مع الخطأ
   ws.on('error', (error) => {
     console.log(`❗ Error: ${error.message}`);
   });
+});
+
+server.listen(PORT, () => {
+  console.log(`Server listening on port ${PORT}`);
 });
